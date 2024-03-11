@@ -1,0 +1,165 @@
+Program.Sub.ScreenSU.Start
+gui.form1..create
+gui.form1..caption("Standard Cost Quantity")
+gui.form1..size(5040,1275)
+gui.form1..minx(0)
+gui.form1..miny(0)
+gui.form1..position(0,0)
+gui.form1..event(unload,form1_unload)
+gui.form1..alwaysontop(False)
+gui.form1..fontname("Arial")
+gui.form1..fontsize(8)
+gui.form1..forecolor(0)
+gui.form1..fontstyle(,,,,)
+gui.form1..BackColor(-2147483633)
+gui.form1..controlbox(True)
+gui.form1..maxbutton(True)
+gui.form1..minbutton(True)
+gui.form1..mousepointer(0)
+gui.form1..moveable(True)
+gui.form1..sizeable(True)
+gui.form1..ShowInTaskBar(True)
+gui.form1..titlebar(True)
+gui.form1.txtPart.create(textbox,"",True,1860,300,0,50,200,False,0,Arial,8,-2147483643,1)
+gui.form1.txtPart.defaultvalue("")
+gui.form1.txtPart.controlgroup(0)
+gui.form1.txtStdCostQty.create(textbox,"",True,1215,300,0,2430,175,False,0,Arial,8,-2147483643,1)
+gui.form1.txtStdCostQty.numericonly(1)
+gui.form1.txtStdCostQty.defaultvalue("")
+gui.form1.txtStdCostQty.controlgroup(0)
+gui.form1.lbl1.create(label,"Part Number",True,1575,255,1,40,0,True,0,Arial,8,-2147483633,0)
+gui.form1.lbl1.defaultvalue("")
+gui.form1.lbl1.controlgroup(0)
+gui.form1.lbl2.create(label,"Std Cost Qty",True,1485,255,1,2425,0,True,0,Arial,8,-2147483633,0)
+gui.form1.lbl2.defaultvalue("")
+gui.form1.lbl2.controlgroup(0)
+gui.form1.txtRev.create(textbox,"",True,450,300,0,1940,185,False,0,Arial,8,-2147483643,1)
+gui.form1.txtRev.defaultvalue("")
+gui.form1.txtRev.controlgroup(0)
+gui.form1.lbl3.create(label,"Rev",True,420,255,1,1945,0,True,0,Arial,8,-2147483633,0)
+gui.form1.lbl3.defaultvalue("")
+gui.form1.lbl3.controlgroup(0)
+gui.form1.cmdDone.create(button)
+gui.form1.cmdDone.caption("Done")
+gui.form1.cmdDone.visible(True)
+gui.form1.cmdDone.size(855,375)
+gui.form1.cmdDone.zorder(0)
+gui.form1.cmdDone.position(3740,130)
+gui.form1.cmdDone.enabled(True)
+gui.form1.cmdDone.fontname("Arial")
+gui.form1.cmdDone.fontsize(8)
+gui.form1.cmdDone.event(click,cmddone_click)
+gui.form1.cmdDone.defaultvalue("")
+gui.form1.cmdDone.controlgroup(0)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Quote 6039-1
+'11/20/14 Coded by AGM
+'This script finds the Standard Cost for a part number selected from Part Supply and Demand
+
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sPartNum.Declare(String)
+V.Local.sPart.Declare(String)
+
+F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+
+	'Populate hook, change script two title to Std Cost Qty
+	F.Intrinsic.Control.Case(14045)
+
+		V.Passed.000190.Set("Std. Cost Qty")
+
+	'Script two button displays a form with textbox of part number, will be disabled from user
+	F.Intrinsic.Control.Case(14080)
+		F.Intrinsic.Control.If(V.Passed.000003,=,"")
+			F.Intrinsic.UI.Msgbox("Please select a part number before running this script","Selet a Part Number")
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.Elseif(V.Passed.000003,<>,"")
+			F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+			Gui.form1.txtPart.Text(V.Passed.000003)
+			Gui.form1.txtRev.Text(V.Passed.000099)
+			F.Intrinsic.Control.If(V.Passed.000099,<>,"")
+				F.Intrinsic.String.RPad(V.Passed.000003," ",17,V.Local.sPart)
+				F.Intrinsic.String.Concat(V.Local.sPart,V.passed.000099,V.Local.sPartNum)
+			F.Intrinsic.Control.Else
+				V.Local.sPartNum.Set(V.Passed.000003)
+			F.Intrinsic.Control.EndIf
+			'Query which finds the Standard cost, pulled from inventory mater table 3
+			F.Intrinsic.String.Concat("SELECT PART, STANDARD_COST_QTY FROM INVENTORY_MST3 WHERE PART = '",V.Local.sPartNum,"'",V.Local.sSQL)
+			F.ODBC.Connection!conx.OpenRecordsetRO("rst",V.Local.sSQL)
+			F.Intrinsic.Control.If(V.ODBC.conx!rst.EOF,<>,True)
+				Gui.form1.txtStdCostQty.Text(V.ODBC.conx!rst.FieldValTrim!STANDARD_COST_QTY)
+			F.Intrinsic.Control.EndIf
+			F.ODBC.conx!rst.Close
+			Gui.form1..Show
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4071_StdCostQty_Supp_Dmnd.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+program.sub.cmddone_click.start
+F.Intrinsic.Control.SetErrorHandler("cmddone_click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.Intrinsic.Control.CallSub(Form1_unload)
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmddone_click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4071_StdCostQty_Supp_Dmnd.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.cmddone_click.end
+
+program.sub.form1_unload.start
+F.Intrinsic.Control.SetErrorHandler("form1_unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("form1_unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4071_StdCostQty_Supp_Dmnd.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+program.sub.form1_unload.end
+
+Program.Sub.Comments.Start
+${$0$}$GCG_4071_StdCostQty_Supp_Dmnd$}$AGM$}$11/20/2014
+${$1$}$$}$$}$1$}$14080$}$INS500-SCRIPT2-BUTN-HOOK$}$5/19/2016 12:58:53 PM$}$(Program: INV500GI ; Screen: INS500)
+
+${$1$}$$}$$}$0$}$14045$}$INS500-POPULATE-HOOK$}$5/19/2016 12:58:33 PM$}$(Program: INV500GI ; Screen: INS500)
+
+Program.Sub.Comments.End
+
